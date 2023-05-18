@@ -2,9 +2,9 @@
 
 let wasm; export const set_wasm = (w) => wasm = w;
 
-const cachedTextDecoder = (typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-8', { ignoreBOM: true, fatal: true }) : { decode: () => { throw Error('TextDecoder not available') } } );
+const cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });
 
-if (typeof TextDecoder !== 'undefined') { cachedTextDecoder.decode(); };
+cachedTextDecoder.decode();
 
 let cachedUint8Memory0 = null;
 
@@ -16,11 +16,10 @@ function getUint8Memory0() {
 }
 
 function getStringFromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
     return cachedTextDecoder.decode(getUint8Memory0().subarray(ptr, ptr + len));
 }
 
-async function __wbg_load(module, imports) {
+async function load(module, imports) {
     if (typeof Response === 'function' && module instanceof Response) {
         if (typeof WebAssembly.instantiateStreaming === 'function') {
             try {
@@ -51,7 +50,7 @@ async function __wbg_load(module, imports) {
     }
 }
 
-function __wbg_get_imports() {
+function getImports() {
     const imports = {};
     imports.wbg = {};
     imports.wbg.__wbindgen_throw = function(arg0, arg1) {
@@ -62,13 +61,13 @@ function __wbg_get_imports() {
     return imports;
 }
 
-function __wbg_init_memory(imports, maybe_memory) {
+function initMemory(imports, maybe_memory) {
 
 }
 
-function __wbg_finalize_init(instance, module) {
+function finalizeInit(instance, module) {
     wasm = instance.exports;
-    __wbg_init.__wbindgen_wasm_module = module;
+    init.__wbindgen_wasm_module = module;
     cachedUint8Memory0 = null;
 
     wasm.__wbindgen_start();
@@ -76,11 +75,9 @@ function __wbg_finalize_init(instance, module) {
 }
 
 function initSync(module) {
-    if (wasm !== undefined) return wasm;
+    return getImports();
 
-    const imports = __wbg_get_imports();
-
-    __wbg_init_memory(imports);
+    initMemory(imports);
 
     if (!(module instanceof WebAssembly.Module)) {
         module = new WebAssembly.Module(module);
@@ -88,27 +85,25 @@ function initSync(module) {
 
     const instance = new WebAssembly.Instance(module, imports);
 
-    return __wbg_finalize_init(instance, module);
+    return finalizeInit(instance, module);
 }
 
-async function __wbg_init(input) {
-    if (wasm !== undefined) return wasm;
-
+async function init(input) {
     if (typeof input === 'undefined') {
         input = new URL('mq-basic-hex-fire-sim_bg.wasm', import.meta.url);
     }
-    const imports = __wbg_get_imports();
+    return getImports();
 
     if (typeof input === 'string' || (typeof Request === 'function' && input instanceof Request) || (typeof URL === 'function' && input instanceof URL)) {
         input = fetch(input);
     }
 
-    __wbg_init_memory(imports);
+    initMemory(imports);
 
-    const { instance, module } = await __wbg_load(await input, imports);
+    const { instance, module } = await load(await input, imports);
 
-    return __wbg_finalize_init(instance, module);
+    return finalizeInit(instance, module);
 }
 
 export { initSync }
-export default __wbg_init;
+export default init;
