@@ -105,7 +105,7 @@ impl HexMatrix {
                 (-1.0/3.0 * mouse_x + 3f32.sqrt()/3.0 * mouse_y) / hex_size,
             )
         };
-        let (q, r): (isize, isize) = cube_round((q, r));
+        let (q, r): (isize, isize) = axial_round((q, r));
         let (x, y): (isize, isize) = if self.hex_vertical {
             (
                 (q + (r - (r&1)) / 2) as isize,
@@ -133,10 +133,60 @@ impl HexMatrix {
             )
         }
     }
+
+    pub fn offset_to_axial(&self, (x, y): (isize, isize)) -> (isize, isize) {
+        if self.hex_vertical {
+            (
+                x - (y - (y&1)) / 2,
+                y,
+            )
+        } else {
+            (
+                x,
+                y - (x - (x&1)) / 2,
+            )
+        }
+    }
+
+    pub fn axial_to_offset(&self, (q, r): (isize, isize)) -> (isize, isize) {
+        if self.hex_vertical {
+            (
+                q + (r - (r&1)) / 2,
+                r,
+            )
+        } else {
+            (
+                q,
+                r + (q - (q&1)) / 2,
+            )
+        }
+    }
+
+    pub fn axial_distance(&self, (q1, r1): (isize, isize), (q2, r2): (isize, isize)) -> isize {
+        (q1-q2).abs() + (q1+r1-q2-r2).abs() + (r1-r2).abs() / 2
+    }
+
+    pub fn offset_line(&self, offset_a: (isize, isize), offset_b: (isize, isize)) -> Vec<(isize, isize)> {
+        let axial_a: (isize, isize) = self.offset_to_axial(offset_a);
+        let axial_b: (isize, isize) = self.offset_to_axial(offset_b);
+        let n: isize = self.axial_distance(axial_a, axial_b) + 1;
+        let mut result: Vec<(isize, isize)> = Vec::with_capacity(n as usize);
+        let float_a: (f32, f32) = (axial_a.0 as f32, axial_a.1 as f32);
+        let float_b: (f32, f32) = (axial_b.0 as f32, axial_b.1 as f32);
+        for i in 0..n {
+            // lerp
+            let float_i = (
+                float_a.0 + (float_b.0 - float_a.0) * (1.0 / (n as f32) * (i as f32)),
+                float_a.1 + (float_b.1 - float_a.1) * (1.0 / (n as f32) * (i as f32)),
+            );
+            result.push(self.axial_to_offset(axial_round(float_i)));
+        }
+        result
+    }
 }
 
 // https://www.redblobgames.com/grids/hexagons/#rounding
-pub fn cube_round((q, r): (f32, f32)) -> (isize, isize) {
+pub fn axial_round((q, r): (f32, f32)) -> (isize, isize) {
     let s = -q-r;
 
     let mut rounded_q = q.round();

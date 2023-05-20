@@ -15,8 +15,12 @@ async fn main() {
     let hex_size_min: f32 = 5.0;
     let hex_size_max: f32 = 50.0;
 
-    let mut temperature_modify: f32 = 100.0;
+    let mut temperature_modify: f32 = 1000.0;
     let mut temperature_add: bool = false;
+
+    let mut last_matrix_index: (isize, isize) = (0, 0);
+    let mut last_mouse_left: bool = false;
+    let mut last_mouse_right: bool = false;
 
     let mut hex_size: f32 = 10.0;
     let mut hex_edge: f32 = 0.0;
@@ -41,7 +45,7 @@ async fn main() {
                     ui.checkbox(&mut temperature_add, "Add temperature instead of overwriting");
                     ui.horizontal(|ui| {
                         ui.label("Temperature on click:");
-                        ui.add(egui::Slider::new(&mut temperature_modify, 10.0..=1000.0));
+                        ui.add(egui::Slider::new(&mut temperature_modify, 10.0..=10000.0));
                     });
                 }
             );
@@ -73,20 +77,32 @@ async fn main() {
         }
 
         // automaton input
-        if is_mouse_button_down(MouseButton::Left) || is_mouse_button_down(MouseButton::Right) {
-            // TODO: improve sub-frame movement input handling (draw line between last and current mouse point)
-            let (x, y): (isize, isize) = matrix.get_mouse_hex_coords(hex_size);
-            if matrix.contains_index((x, y)) {
-                //println!("[{}, {}] -> click: ({}, {})", matrix.matrix_size.0, matrix.matrix_size.1, x, y);
-                let (x, y): (usize, usize) = (x as usize, y as usize);
-                // TODO: turn addition tick-based upon addition of TPS
-                if is_mouse_button_down(MouseButton::Left) {
+        // positive
+        // TODO: turn addition tick-based upon addition of TPS
+        let current_matrix_index: (isize, isize) = matrix.get_mouse_hex_coords(hex_size);
+        if is_mouse_button_down(MouseButton::Left) {
+            if !last_mouse_left {
+                last_matrix_index = current_matrix_index;
+            }
+            for (x, y) in matrix.offset_line(last_matrix_index, current_matrix_index) {
+                if matrix.contains_index((x, y)) {
+                    let (x, y): (usize, usize) = (x as usize, y as usize);
                     if temperature_add {
                         matrix.matrix[y][x] += temperature_modify;
                     } else {
                         matrix.matrix[y][x] = temperature_modify;
                     }
-                } else if is_mouse_button_down(MouseButton::Right) {
+                }
+            }
+        }
+        // negative
+        if is_mouse_button_down(MouseButton::Right) {
+            if !last_mouse_right {
+                last_matrix_index = current_matrix_index;
+            }
+            for (x, y) in matrix.offset_line(last_matrix_index, current_matrix_index) {
+                if matrix.contains_index((x, y)) {
+                    let (x, y): (usize, usize) = (x as usize, y as usize);
                     if temperature_add {
                         matrix.matrix[y][x] = (matrix.matrix[y][x] - temperature_modify).max(0.0);
                     } else {
@@ -95,6 +111,10 @@ async fn main() {
                 }
             }
         }
+
+        last_matrix_index = current_matrix_index;
+        last_mouse_left = is_mouse_button_down(MouseButton::Left);
+        last_mouse_right = is_mouse_button_down(MouseButton::Right);
 
         // rendering
         clear_background(DARKGRAY);
