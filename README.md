@@ -5,6 +5,16 @@ field and in the future is also intended to be a study on best ways to work with
 temperature to color comversion while retaining brightness information for later
 use in bloom shader rendering.
 
+## Conclussion and follow-up goals:
+
+### Working with hexagons
+- Find or create a hexagonal manipulation crate based on
+[these principles](https://www.redblobgames.com/grids/hexagons/)
+- Add or include edge indexing support for future Eulerian fluid simulator
+
+### Converting temperature to color / Bloom calculation and shading
+- TBD
+
 ## Instructions and dependencies:
 
 All scripts listed below are compatible with default Windows installation of
