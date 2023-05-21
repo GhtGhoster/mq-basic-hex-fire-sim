@@ -40,10 +40,11 @@ pub struct HexMatrix {
     pub hex_vertical: bool,
     pub matrix_size: (usize, usize), // width, height
     pub matrix: Vec<Vec<f32>>,
+    pub heat_loss: f32,
 }
 
 impl HexMatrix {
-    pub fn new(hex_vertical: bool, matrix_size: (usize, usize)) -> Self {
+    pub fn new(hex_vertical: bool, matrix_size: (usize, usize), heat_loss: f32) -> Self {
         let (matrix_width, matrix_height): (usize, usize) = matrix_size;
         let mut matrix: Vec<Vec<f32>> = Vec::with_capacity(matrix_height);
         for _ in 0..matrix_height {
@@ -53,6 +54,7 @@ impl HexMatrix {
             hex_vertical,
             matrix_size,
             matrix,
+            heat_loss,
         }
     }
 
@@ -182,6 +184,15 @@ impl HexMatrix {
             result.push(self.axial_to_offset(axial_round(float_i)));
         }
         result
+    }
+
+    pub fn update(&mut self) {
+        // fading - heat loss
+        for x in 0..self.matrix_size.0 {
+            for y in 0..self.matrix_size.1 {
+                self.matrix[y][x] *= 1.0 - self.heat_loss;
+            }
+        }
     }
 }
 
