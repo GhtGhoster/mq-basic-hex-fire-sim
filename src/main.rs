@@ -18,15 +18,15 @@ async fn main() {
 
     let mut hex_edge: f32 = 0.0;
 
-    let temp_mod_min: f32 = 10.0;
-    let temp_mod_max: f32 = 10_000.0;
-    let mut temperature_modify: f32 = 1000.0;
+    let temp_mod_min: f32 = 0.0;
+    let temp_mod_max: f32 = 10.0;
+    let mut temperature_modify: f32 = 5.0;
 
     let mut temperature_add: bool = false;
 
     let tps_min: f64 = 0.0;
-    let tps_max: f64 = 128.0;
-    let mut tps: f64 = 20.0;
+    let tps_max: f64 = 120.0;
+    let mut tps: f64 = 30.0;
 
     let mut last_tick = get_time();
     let mut ticks_last_second: Vec<f64> = vec![];
@@ -38,7 +38,8 @@ async fn main() {
     let mut matrix: HexMatrix = HexMatrix::new(
         false, // vertical hexagons
         (0, 0), // matrix size
-        0.1, // heat loss
+        0.5, // heat loss
+        0.5, // heat transfer
     );
 
     loop {
@@ -52,7 +53,13 @@ async fn main() {
                     ui.label(format!("FPS: {}", get_fps()));
                     ui.label(format!("TPS: {}", ticks_last_second.len()));
                     ui.horizontal(|ui| {
-                        ui.label("Target TPS:");
+                        if cfg!(target_arch = "wasm32") && cfg!(target_os = "unknown") {
+                            ui.label("Target TPS*:").on_hover_ui(|ui|  {
+                                ui.label("Target TPS will only work in fractions of FPS (for 60 FPS, TPS can be 1, 2, ..., 20, 30, 60)");
+                            });
+                        } else {
+                            ui.label("Target TPS:");
+                        }
                         ui.add(egui::Slider::new(&mut tps, tps_min..=tps_max));
                     });
                     ui.checkbox(&mut matrix.hex_vertical, "Vertical hexagons?");
@@ -61,17 +68,21 @@ async fn main() {
                         ui.add(egui::Slider::new(&mut hex_size, hex_size_min..=hex_size_max));
                     });
                     ui.horizontal(|ui| {
-                        ui.label("Edge percentage:");
+                        ui.label("Edge %:");
                         ui.add(egui::Slider::new(&mut hex_edge, 0.0..=1.0));
                     });
                     ui.checkbox(&mut temperature_add, "Add temperature instead of overwriting");
                     ui.horizontal(|ui| {
-                        ui.label("Temperature on click:");
+                        ui.label("Temp magnitude on click:");
                         ui.add(egui::Slider::new(&mut temperature_modify, temp_mod_min..=temp_mod_max));
                     });
                     ui.horizontal(|ui| {
                         ui.label("Heat loss %:");
                         ui.add(egui::Slider::new(&mut matrix.heat_loss, 0.0..=1.0));
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("Heat transfer %:");
+                        ui.add(egui::Slider::new(&mut matrix.heat_tran, 0.0..=1.0));
                     });
                 }
             );
@@ -98,7 +109,7 @@ async fn main() {
         };
 
         if new_matrix_size != matrix.matrix_size {
-            matrix = HexMatrix::new(matrix.hex_vertical, new_matrix_size, matrix.heat_loss);
+            matrix = HexMatrix::new(matrix.hex_vertical, new_matrix_size, matrix.heat_loss, matrix.heat_tran);
         }
 
         // automaton input
@@ -115,10 +126,10 @@ async fn main() {
                         // TPS-based addition doesn't work, lines will only be as long as TPS allows
                         // TODO: maybe store all the unticked hexagons in a set?
                         //if (curr_time - last_tick) > (1.0 / tps) {
-                        matrix.matrix[y][x] += temperature_modify;
+                        matrix.matrix[y][x] += 10f32.powf(temperature_modify);
                         //}
                     } else {
-                        matrix.matrix[y][x] = temperature_modify;
+                        matrix.matrix[y][x] = 10f32.powf(temperature_modify);
                     }
                 }
             }
@@ -132,7 +143,7 @@ async fn main() {
                 if matrix.contains_index((x, y)) {
                     let (x, y): (usize, usize) = (x as usize, y as usize);
                     if temperature_add {
-                        matrix.matrix[y][x] = (matrix.matrix[y][x] - temperature_modify).max(0.0);
+                        matrix.matrix[y][x] = (matrix.matrix[y][x] - 10f32.powf(temperature_modify)).max(0.0);
                     } else {
                         matrix.matrix[y][x] = 0.0;
                     }
@@ -141,7 +152,12 @@ async fn main() {
         }
 
         // ticking simulation
-        if (curr_time - last_tick) > (1.0 / tps) {
+        let web_adjusted_tps = if cfg!(target_arch = "wasm32") && cfg!(target_os = "unknown") {
+            tps + 1.0 // since FPS and TPS are fraction-locked somehow, allow the current TPS target to be achieved exactly
+        } else {
+            tps
+        };
+        if (curr_time - last_tick) > (1.0 / web_adjusted_tps) {
             matrix.update();
             last_tick = curr_time;
             ticks_last_second.push(curr_time);

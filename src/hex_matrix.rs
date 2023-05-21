@@ -1,5 +1,6 @@
 
 use macroquad::prelude::{*};
+use std::mem;
 
 // hex_horizontal
 const NEIGHBOUR_INDEX_DELTAS_HORIZONTAL_EVEN: [(isize, isize); 6] = [
@@ -40,21 +41,29 @@ pub struct HexMatrix {
     pub hex_vertical: bool,
     pub matrix_size: (usize, usize), // width, height
     pub matrix: Vec<Vec<f32>>,
+    pub buffer: Vec<Vec<f32>>,
     pub heat_loss: f32,
+    pub heat_tran: f32,
 }
 
 impl HexMatrix {
-    pub fn new(hex_vertical: bool, matrix_size: (usize, usize), heat_loss: f32) -> Self {
+    pub fn new(hex_vertical: bool, matrix_size: (usize, usize), heat_loss: f32, heat_tran: f32) -> Self {
         let (matrix_width, matrix_height): (usize, usize) = matrix_size;
         let mut matrix: Vec<Vec<f32>> = Vec::with_capacity(matrix_height);
         for _ in 0..matrix_height {
             matrix.push(vec![0.0; matrix_width]);
         }
+        let mut buffer: Vec<Vec<f32>> = Vec::with_capacity(matrix_height);
+        for _ in 0..matrix_height {
+            buffer.push(vec![0.0; matrix_width]);
+        }
         HexMatrix {
             hex_vertical,
             matrix_size,
             matrix,
+            buffer,
             heat_loss,
+            heat_tran,
         }
     }
 
@@ -187,12 +196,36 @@ impl HexMatrix {
     }
 
     pub fn update(&mut self) {
-        // fading - heat loss
         for x in 0..self.matrix_size.0 {
             for y in 0..self.matrix_size.1 {
-                self.matrix[y][x] *= 1.0 - self.heat_loss;
+                // fading - heat loss
+                let mut curr_temp = self.matrix[y][x] * (1.0 - (self.heat_loss / 2.0));
+                if curr_temp < 0.01 {
+                    curr_temp = 0.0;
+                }
+
+                // spreading
+                for (nx, ny) in self.neighbour_indices((x as isize, y as isize)) {
+                    let mut temp_delta = self.matrix[ny][nx] - self.matrix[y][x];
+                    temp_delta *= self.heat_tran / 6.0;
+                    curr_temp += temp_delta;
+                }
+
+                // writing back
+                if self.hex_vertical {
+                    // TODO:
+                } else {
+                    if y > 0 {
+                        self.buffer[y-1][x] = curr_temp;
+                    } else {
+                        self.buffer[self.matrix_size.1-1][x] = 0.0;
+                    }
+                }
             }
         }
+        // swap buffer and matrix
+        // (self.matrix, self.buffer) = (self.buffer, self.matrix);
+        mem::swap(&mut self.matrix, &mut self.buffer);
     }
 }
 
