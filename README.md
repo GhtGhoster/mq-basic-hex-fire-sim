@@ -1,26 +1,9 @@
-# Macroquad wasm-bindgen build template with support for GitHub Pages
+# Basic hexagonal field temperature simulation
 
-This repository serves as a template for projects based on the Rust
-[`macroquad`](https://github.com/not-fl3/macroquad)
-crate, built with the
-[`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen)
-command line utility. Included are
-[`rand`](https://github.com/rust-random/rand),
-[`getrandom`](https://github.com/rust-random/getrandom),
-[`egui`](https://github.com/emilk/egui), and
-[`egui-macroquad`](https://github.com/optozorax/egui-macroquad)
-crates for future convenience.
-Its intention is making WASM building, WASM bindings generation,
-and readying the repository for GitHub Pages as painless as possible.
-
-(2 "_required_" `.js` files from `egui-macroquad` -> 
-[`quad-url`](https://github.com/optozorax/quad-url)
-omitted because nothing broke so far)
-
-
-More interesting crates to look out for in the future:
-- [`quad-storage`](https://crates.io/crates/quad-storage)
-- [`quad-url`](https://crates.io/crates/quad-url)
+This project serves as a study about best practices when working with a hexagonal
+field and in the future is also intended to be a study on best ways to work with
+temperature to color comversion while retaining brightness information for later
+use in bloom shader rendering.
 
 ## Instructions and dependencies:
 

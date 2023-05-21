@@ -103,7 +103,6 @@ async fn main() {
 
         // automaton input
         // positive
-        // TODO: turn addition tick-based upon addition of TPS
         let current_matrix_index: (isize, isize) = matrix.get_mouse_hex_coords(hex_size);
         if is_mouse_button_down(MouseButton::Left) {
             if !last_mouse_left {
@@ -113,7 +112,7 @@ async fn main() {
                 if matrix.contains_index((x, y)) {
                     let (x, y): (usize, usize) = (x as usize, y as usize);
                     if temperature_add {
-                        // doesn't work, lines will only be as long as tps allows
+                        // TPS-based addition doesn't work, lines will only be as long as TPS allows
                         // TODO: maybe store all the unticked hexagons in a set?
                         //if (curr_time - last_tick) > (1.0 / tps) {
                         matrix.matrix[y][x] += temperature_modify;
