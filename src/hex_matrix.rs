@@ -199,21 +199,28 @@ impl HexMatrix {
         for x in 0..self.matrix_size.0 {
             for y in 0..self.matrix_size.1 {
                 // fading - heat loss
-                let mut curr_temp = self.matrix[y][x] * (1.0 - (self.heat_loss / 2.0));
+                let mut curr_temp = self.matrix[y][x] * (1.0 - (self.heat_loss / 2.0)); // prevent heat loss creating holes on the flame
                 if curr_temp < 0.01 {
                     curr_temp = 0.0;
                 }
 
-                // spreading
+                // spreading - heat transfer
                 for (nx, ny) in self.neighbour_indices((x as isize, y as isize)) {
                     let mut temp_delta = self.matrix[ny][nx] - self.matrix[y][x];
-                    temp_delta *= self.heat_tran / 6.0;
+                    // prevent taking more heat than a cell can give
+                    temp_delta *= self.heat_tran / self.neighbour_indices((nx as isize, ny as isize)).len() as f32;
                     curr_temp += temp_delta;
                 }
 
                 // writing back
                 if self.hex_vertical {
-                    // TODO:
+                    // TODO: split evenly when moving to the "upwards" row
+                    // (requires addition to a completely zero'd out buffer)
+                    if y > 0 {
+                        self.buffer[y-1][x] = curr_temp;
+                    } else {
+                        self.buffer[self.matrix_size.1-1][x] = 0.0;
+                    }
                 } else {
                     if y > 0 {
                         self.buffer[y-1][x] = curr_temp;

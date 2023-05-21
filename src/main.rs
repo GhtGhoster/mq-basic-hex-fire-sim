@@ -17,6 +17,9 @@ async fn main() {
     let mut hex_size: f32 = 10.0;
 
     let mut hex_edge: f32 = 0.0;
+    let mut highlight_mouse: bool = true;
+    let mut highlight_axes: bool = false;
+    let mut highlight_neighbours: bool = false;
 
     let temp_mod_min: f32 = 0.0;
     let temp_mod_max: f32 = 10.0;
@@ -45,44 +48,62 @@ async fn main() {
     loop {
         // used later for tick counting
         let curr_time =  get_time();
+        // used latter for automaton input
+        let current_matrix_index: (isize, isize) = matrix.get_mouse_hex_coords(hex_size);
 
         // ui
         egui_macroquad::ui(|egui_ctx| {
             egui::Window::new("Controls")
                 .show(egui_ctx, |ui| {
-                    ui.label(format!("FPS: {}", get_fps()));
-                    ui.label(format!("TPS: {}", ticks_last_second.len()));
-                    ui.horizontal(|ui| {
-                        if cfg!(target_arch = "wasm32") && cfg!(target_os = "unknown") {
-                            ui.label("Target TPS*:").on_hover_ui(|ui|  {
-                                ui.label("Target TPS will only work in fractions of FPS (for 60 FPS, TPS can be 1, 2, ..., 20, 30, 60)");
-                            });
-                        } else {
-                            ui.label("Target TPS:");
-                        }
-                        ui.add(egui::Slider::new(&mut tps, tps_min..=tps_max));
+                    ui.collapsing("Stats", |ui| {
+                        ui.label(format!("Cursor location: [{}, {}]", current_matrix_index.0, current_matrix_index.1));
+                        ui.label(format!("Neighbours: {}", matrix.neighbour_indices(current_matrix_index).len()));
+                        ui.label(format!("FPS: {}", get_fps()));
+                        ui.label(format!("TPS: {}", ticks_last_second.len()));
+                        ui.horizontal(|ui| {
+                            if cfg!(target_arch = "wasm32") && cfg!(target_os = "unknown") {
+                                ui.label("Target TPS*:").on_hover_ui(|ui|  {
+                                    ui.label("Target TPS will only work in fractions of FPS (for 60 FPS, TPS can be 1, 2, ..., 20, 30, 60)");
+                                });
+                            } else {
+                                ui.label("Target TPS:");
+                            }
+                            ui.add(egui::Slider::new(&mut tps, tps_min..=tps_max));
+                        });
                     });
-                    ui.checkbox(&mut matrix.hex_vertical, "Vertical hexagons?");
-                    ui.horizontal(|ui| {
-                        ui.label("Hexagon size:");
-                        ui.add(egui::Slider::new(&mut hex_size, hex_size_min..=hex_size_max));
+
+                    ui.collapsing("Size and rotation", |ui| {
+                        ui.checkbox(&mut matrix.hex_vertical, "Vertical hexagons?");
+                        ui.horizontal(|ui| {
+                            ui.label("Hexagon size:");
+                            ui.add(egui::Slider::new(&mut hex_size, hex_size_min..=hex_size_max));
+                        });
                     });
-                    ui.horizontal(|ui| {
-                        ui.label("Edge %:");
-                        ui.add(egui::Slider::new(&mut hex_edge, 0.0..=1.0));
+
+                    ui.collapsing("Rendering", |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label("Edge %:");
+                            ui.add(egui::Slider::new(&mut hex_edge, 0.0..=1.0));
+                        });
+                        ui.checkbox(&mut highlight_mouse, "Highlight current mouse position?");
+                        ui.checkbox(&mut highlight_neighbours, "Highlight neighbours of mouse?");
+                        ui.checkbox(&mut highlight_axes, "Highlight current row and column?");
                     });
-                    ui.checkbox(&mut temperature_add, "Add temperature instead of overwriting");
-                    ui.horizontal(|ui| {
-                        ui.label("Temp magnitude on click:");
-                        ui.add(egui::Slider::new(&mut temperature_modify, temp_mod_min..=temp_mod_max));
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label("Heat loss %:");
-                        ui.add(egui::Slider::new(&mut matrix.heat_loss, 0.0..=1.0));
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label("Heat transfer %:");
-                        ui.add(egui::Slider::new(&mut matrix.heat_tran, 0.0..=1.0));
+
+                    ui.collapsing("Simulation properties", |ui| {
+                        ui.checkbox(&mut temperature_add, "Add temperature instead of overwriting");
+                        ui.horizontal(|ui| {
+                            ui.label("Temp magnitude on click:");
+                            ui.add(egui::Slider::new(&mut temperature_modify, temp_mod_min..=temp_mod_max));
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("Heat loss %:");
+                            ui.add(egui::Slider::new(&mut matrix.heat_loss, 0.0..=1.0));
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("Heat transfer %:");
+                            ui.add(egui::Slider::new(&mut matrix.heat_tran, 0.0..=1.0));
+                        });
                     });
                 }
             );
@@ -114,7 +135,6 @@ async fn main() {
 
         // automaton input
         // positive
-        let current_matrix_index: (isize, isize) = matrix.get_mouse_hex_coords(hex_size);
         if is_mouse_button_down(MouseButton::Left) {
             if !last_mouse_left {
                 last_matrix_index = current_matrix_index;
@@ -123,11 +143,9 @@ async fn main() {
                 if matrix.contains_index((x, y)) {
                     let (x, y): (usize, usize) = (x as usize, y as usize);
                     if temperature_add {
-                        // TPS-based addition doesn't work, lines will only be as long as TPS allows
-                        // TODO: maybe store all the unticked hexagons in a set?
-                        //if (curr_time - last_tick) > (1.0 / tps) {
+                        // Note: should probably be done based on ticks which would require
+                        //       restructuring at a scale not worth it for this project
                         matrix.matrix[y][x] += 10f32.powf(temperature_modify);
-                        //}
                     } else {
                         matrix.matrix[y][x] = 10f32.powf(temperature_modify);
                     }
@@ -182,10 +200,34 @@ async fn main() {
             for j in 0..matrix.matrix_size.1 {
                 let (x, y): (f32, f32) = matrix.offset_coord_to_center_pixel(hex_size, (i, j));
                 let color: Color = kelvin_to_color(matrix.matrix[j][i]);
+                // highlight neighbours
+                if (
+                    highlight_neighbours &&
+                    matrix.neighbour_indices((i as isize, j as isize)).contains(&(current_matrix_index.0 as usize, current_matrix_index.1 as usize))
+                ) || (
+                    highlight_axes && (
+                        current_matrix_index.0 == i as isize ||
+                        current_matrix_index.1 == j as isize
+                    )
+                ) || (
+                    highlight_mouse &&
+                    current_matrix_index.0 == i as isize &&
+                    current_matrix_index.1 == j as isize
+                ) {
+                    draw_hexagon(
+                        x,
+                        y,
+                        hex_size,
+                        0.0,
+                        matrix.hex_vertical,
+                        BLACK,
+                        WHITE,
+                    );
+                }
                 draw_hexagon(
-                    x, //screen_width()/2.0,
-                    y, //screen_height()/2.0,
-                    hex_size * (1.0 - hex_edge), //(screen_width()/2.0).min(screen_height()/2.0),
+                    x,
+                    y,
+                    hex_size * (1.0 - hex_edge),
                     0.0,
                     matrix.hex_vertical,
                     BLACK,
