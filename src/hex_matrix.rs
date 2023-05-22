@@ -96,6 +96,17 @@ impl HexMatrix {
         result
     }
 
+    // only used for vertical hexagon orientation for heat dissipation
+    pub fn upper_neighbour_indices(&self, index: (isize, isize)) -> Vec<(usize, usize)> {
+        let mut result: Vec<(usize, usize)> = vec![];
+        for (x, y) in self.neighbour_indices(index) {
+            if (y as isize) < index.1 {
+                result.push((x, y));
+            }
+        }
+        result
+    }
+
     pub fn get_mouse_hex_coords(&self, hex_size: f32) -> (isize, isize) {
         let (mut mouse_x, mut mouse_y): (f32, f32) = mouse_position();
         if self.hex_vertical {
@@ -196,10 +207,10 @@ impl HexMatrix {
     }
 
     pub fn update(&mut self) {
-        for x in 0..self.matrix_size.0 {
-            for y in 0..self.matrix_size.1 {
+        for y in 0..self.matrix_size.1 {
+            for x in 0..self.matrix_size.0 {
                 // fading - heat loss
-                let mut curr_temp = self.matrix[y][x] * (1.0 - (self.heat_loss / 2.0)); // prevent heat loss creating holes on the flame
+                let mut curr_temp = self.matrix[y][x] * (1.0 - (self.heat_loss / 2.0)); // prevent heat loss creating holes in the flame
                 if curr_temp < 0.01 {
                     curr_temp = 0.0;
                 }
@@ -214,12 +225,10 @@ impl HexMatrix {
 
                 // writing back
                 if self.hex_vertical {
-                    // TODO: split evenly when moving to the "upwards" row
-                    // (requires addition to a completely zero'd out buffer)
-                    if y > 0 {
-                        self.buffer[y-1][x] = curr_temp;
-                    } else {
-                        self.buffer[self.matrix_size.1-1][x] = 0.0;
+                    // requires zeroing out buffer for possible addition of multiple temparatures in the next row
+                    self.buffer[y][x] = 0.0;
+                    for (nx, ny) in self.upper_neighbour_indices((x as isize, y as isize)) {
+                        self.buffer[ny][nx] += curr_temp / 2.0;
                     }
                 } else {
                     if y > 0 {
