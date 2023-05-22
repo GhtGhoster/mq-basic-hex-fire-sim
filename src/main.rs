@@ -53,8 +53,14 @@ async fn main() {
 
         // ui
         egui_macroquad::ui(|egui_ctx| {
-            egui::Window::new("Controls")
+            egui::Window::new("HexTempSim")
                 .show(egui_ctx, |ui| {
+                    ui.collapsing("Controls", |ui| {
+                        ui.label("Right mouse: Add or set temperature to a cell");
+                        ui.label("Left mouse: Subtract or remove temperature from a cell");
+                        ui.label("Scroll: Zoom in or out (change hexagon size)");
+                    });
+
                     ui.collapsing("Stats", |ui| {
                         ui.label(format!("Cursor location: [{}, {}]", current_matrix_index.0, current_matrix_index.1));
                         ui.label(format!("Neighbours: {}", matrix.neighbour_indices(current_matrix_index).len()));
@@ -73,7 +79,7 @@ async fn main() {
                     });
 
                     ui.collapsing("Size and rotation", |ui| {
-                        ui.checkbox(&mut matrix.hex_vertical, "Vertical hexagons?");
+                        ui.checkbox(&mut matrix.hex_vertical, "Vertical hexagons");
                         ui.horizontal(|ui| {
                             ui.label("Hexagon size:");
                             ui.add(egui::Slider::new(&mut hex_size, hex_size_min..=hex_size_max));
@@ -85,9 +91,9 @@ async fn main() {
                             ui.label("Edge %:");
                             ui.add(egui::Slider::new(&mut hex_edge, 0.0..=1.0));
                         });
-                        ui.checkbox(&mut highlight_mouse, "Highlight current mouse position?");
-                        ui.checkbox(&mut highlight_neighbours, "Highlight neighbours of mouse?");
-                        ui.checkbox(&mut highlight_axes, "Highlight current row and column?");
+                        ui.checkbox(&mut highlight_mouse, "Highlight current mouse position");
+                        ui.checkbox(&mut highlight_neighbours, "Highlight neighbours of mouse");
+                        ui.checkbox(&mut highlight_axes, "Highlight current row and column");
                     });
 
                     ui.collapsing("Simulation properties", |ui| {
