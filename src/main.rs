@@ -48,7 +48,7 @@ async fn main() {
     loop {
         // used later for tick counting
         let curr_time =  get_time();
-        // used latter for automaton input
+        // used later for automaton input
         let current_matrix_index: (isize, isize) = matrix.get_mouse_hex_coords(hex_size);
 
         // ui
